@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Prontuários - Google Sheets</title>
+    <style>
+        :root {
+            --bg-color: #f7f9fc;
+            --card-bg: #ffffff;
+            --border-color: #2f3640;
+            --text-main: #2f3640;
+            --primary: #4481eb;
+            --success: #26de81;
+            --pending: #fed330;
+            --danger: #eb4d4b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 15px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        #status-sync {
+            font-size: 0.75rem;
+            color: #718093;
+            margin-top: 4px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            grid-template-rows: auto auto;
+            gap: 20px;
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        .cadastro-container, .card-pesq, .desktop, .fluxo, .producao {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .card-pesq {
+            grid-column: 2;
+            grid-row: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .pesq-pront {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .pesq-pront input[type="text"] {
+            flex: 1;
+            padding: 8px 14px;
+            border: 1px solid #ced6e0;
+            border-radius: 20px;
+            outline: none;
+        }
+
+        .pesq-pront input[type="button"] {
+            background: #f1f2f6;
+            border: 1px solid #ced6e0;
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            cursor: pointer;
+        }
+
+        .resultado-pesquisa-container {
+            max-height: 150px;
+            overflow-y: auto;
+            border-top: 1px solid #eee;
+            padding-top: 8px;
+            display: none;
+        }
+
+        .resultado-pesquisa-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+        }
+
+        .cadastro-container {
+            grid-column: 1;
+            grid-row: 1 / span 2;
+            height: fit-content;
+        }
+
+        .cadastro-container h2, .desktop h2, .fluxo h3, .producao h3 {
+            font-size: 1.05rem;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .cadastro_prontuario {
+            list-style: none;
+        }
+
+        .cadastro_prontuario li {
+            margin-bottom: 12px;
+        }
+
+        .cadastro_prontuario label, .cadastro_prontuario p {
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 3px;
+            display: block;
+        }
+
+        input[type="number"], input[type="date"], textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced6e0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        input[type="number"]:focus, input[type="date"]:focus {
+            border-color: var(--primary);
+        }
+
+        .condicao_uib, .condicao_amb, .condicao_des {
+            display: none;
+            margin-top: 6px;
+            padding-left: 8px;
+            border-left: 2px solid var(--primary);
+        }
+
+        button[type="submit"], .btn-acao {
+            background-color: var(--text-main);
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button[type="submit"]:hover { background-color: var(--primary); }
+
+        .desktop {
+            grid-column: 2;
+            grid-row: 2;
+            min-height: 200px;
+        }
+
+        .arquivos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            list-style: none;
+        }
+
+        .prontuario-card {
+            background: #fdfdfd;
+            border: 1px solid #ced6e0;
+            border-radius: 8px;
+            padding: 10px;
+            width: 140px;
+            text-align: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .prontuario-card span.info-texto {
+            font-size: 0.7rem;
+            color: #57606f;
+            line-height: 1.1;
+        }
+
+        .btn-pront {
+            display: flex;
+            gap: 5px;
+            width: 100%;
+        }
+
+        .btn-pront input[type="button"] {
+            flex: 1;
+            padding: 4px;
+            border: 1px solid #ced6e0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            background: white;
+        }
+
+        #pronto {
+            background-color: #e8f8f5;
+            color: #00b894;
+            border-color: #00b894;
+        }
+
+        .menu-reticiencia {
+            display: none;
+            position: absolute;
+            top: 38px;
+            right: 8px;
+            background: white;
+            border: 1px solid #ced6e0;
+            border-radius: 6px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 10;
+            width: 85px;
+            padding: 4px;
+        }
+
+        .menu-reticiencia button {
+            display: block;
+            width: 100%;
+            background: none;
+            border: none;
+            padding: 5px;
+            text-align: left;
+            font-size: 0.75rem;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .menu-reticiencia button:hover { background-color: #f1f2f6; }
+
+        .secoes-inferiores {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            max-width: 1300px;
+            margin: 20px auto 0 auto;
+        }
+
+        .fluxo-botoes {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .fluxo-botoes input {
+            padding: 5px 12px;
+            border: none;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .btn-filtro-pronto { background-color: var(--success); color: #0652dd; }
+        .btn-filtro-pend { background-color: var(--pending); color: #2f3640; }
+
+        .card-prod p {
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+        }
+
+        .card-prod input[type="date"] {
+            margin-bottom: 8px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 380px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+                padding: 10px;
+            }
+            header { order: 1; }
+            .card-pesq { order: 2; grid-column: auto; grid-row: auto; }
+            .cadastro-container { order: 3; grid-column: auto; grid-row: auto; }
+            .desktop { order: 4; grid-column: auto; grid-row: auto; }
+            .secoes-inferiores {
+                order: 5;
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+                margin: 0;
+            }
+            .dashboard-grid { display: contents; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Hello, clt. Mais um dia de luta.</h1>
+        <div id="status-sync">Carregando dados da nuvem...</div>
+    </header>
+
+    <div class="dashboard-grid">
+        <div class="card-pesq">
+            <div class="pesq-pront">
+                <input type="text" id="input-busca" placeholder="Fala, chata, o prontuário." oninput="pesquisarProntuario()">
+                <input type="button" value="&#x1F50D;" onclick="pesquisarProntuario()">
+            </div>
+            <div id="resultado-pesquisa" class="resultado-pesquisa-container"></div>
+        </div>
+
+        <div class="cadastro-container">
+            <form id="form-prontuario" onsubmit="adicionarMesa(event)">
+                <h2>Vamos adicionar à mesa</h2>
+                <ul class="cadastro_prontuario">
+                    <li>
+                        <label for="prontuario">Número de prontuário</label>
+                        <input type="number" id="prontuario" required>
+                    </li>
+                    <li>
+                        <label for="alta">Data de alta</label>
+                        <input type="date" id="alta">
+                    </li>
+                    <li>
+                        <label for="entrada">Data de internação</label>
+                        <input type="date" id="entrada">
+                    </li>
+                    <li>
+                        <p>Emergência</p>
+                        <label><input type="radio" name="emergencia" value="sim" onclick="toggleCondicao('uib', true)"> Sim</label>
+                        <label><input type="radio" name="emergencia" value="nao" onclick="toggleCondicao('uib', false)" checked> Não</label>
+                        <div class="condicao_uib" id="bloco_uib">
+                            <label>Data</label>
+                            <input type="date" id="uib_data">
+                        </div>
+                    </li>
+                    <li>
+                        <p>Ambulatório</p>
+                        <label><input type="radio" name="ambulatorio" value="sim" onclick="toggleCondicao('amb', true)"> Sim</label>
+                        <label><input type="radio" name="ambulatorio" value="nao" onclick="toggleCondicao('amb', false)" checked> Não</label>
+                        <div class="condicao_amb" id="bloco_amb">
+                            <label>Data</label>
+                            <input type="date" id="amb_data">
+                        </div>
+                    </li>
+                    <li>
+                        <p>Desmame</p>
+                        <label><input type="radio" name="desmame" value="sim" onclick="toggleCondicao('des', true)"> Sim</label>
+                        <label><input type="radio" name="desmame" value="nao" onclick="toggleCondicao('des', false)" checked> Não</label>
+                        <div class="condicao_des" id="bloco_des">
+                            <label>Informe quantidade</label>
+                            <input type="number" id="des_qtd">
+                        </div>
+                    </li>
+                </ul>
+                <br>
+                <button type="submit">Adicionar para montagem</button>
+            </form>
+        </div>
+
+        <div class="desktop">
+            <h2>You better work, querida!</h2>
+            <div class="mesa">
+                <ul class="arquivos" id="lista-mesa"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="secoes-inferiores">
+        <div class="fluxo">
+            <h3>Fluxo</h3>
+            <div class="fluxo-botoes">
+                <input type="button" class="btn-filtro-pronto" value="Prontuários Prontos" onclick="filtrarFluxo('pronto')">
+                <input type="button" class="btn-filtro-pend" value="Prontuários Pendentes" onclick="filtrarFluxo('pendente')">
+                <input type="button" style="background:#dfe4ea;" value="Mesa" onclick="renderizarMesa()">
+            </div>
+            <div class="finalizados" id="lista-fluxo-view" style="font-size: 0.85rem; color: #57606f;">
+                Toque em "Prontuários Prontos" ou "Prontuários Pendentes" para ver.
+            </div>
+        </div>
+
+        <div class="producao">
+            <h3>Produção</h3>
+            <div class="card-prod">
+                <p>Quem fez, fez!</p>
+                <input type="date" name="data-prod" id="data-prod" onchange="atualizarContagemProducao()">
+                <p id="texto-contador">Prontuários montados: 0</p>
+                <input type="button" class="btn-acao" value="Detalhes" onclick="abrirDetalhesProducao()">
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-info" class="modal">
+        <div class="modal-content">
+            <h3>Informações do Prontuário</h3>
+            <div id="conteudo-info" style="font-size:0.9rem; margin-bottom: 10px;"></div>
+            <button class="btn-acao" onclick="fecharModal('modal-info')">Fechar</button>
+        </div>
+    </div>
+
+    <div id="modal-detalhes" class="modal">
+        <div class="modal-content">
+            <h3>Detalhes da Produção</h3>
+            <div id="conteudo-detalhes" style="font-size:0.9rem; margin-bottom: 10px;"></div>
+            <button class="btn-acao" onclick="fecharModal('modal-detalhes')">Fechar</button>
+        </div>
+    </div>
+
+    <div id="modal-pendencia" class="modal">
+        <div class="modal-content">
+            <h3>Adicionar Pendência</h3>
+            <p style="margin-bottom: 5px; font-size: 0.85rem;">Justificativa:</p>
+            <textarea id="texto-pendencia" rows="4"></textarea>
+            <button class="btn-acao" onclick="salvarPendencia()" style="margin-top: 10px;">Salvar</button>
+            <button class="btn-acao" onclick="fecharModal('modal-pendencia')" style="background: #a4b0be; margin-top: 5px;">Cancelar</button>
+        </div>
+    </div>
+
+    <script>
+        // COLE SUA URL DO APPS SCRIPT ABAIXO:
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzh9COnqoRwD58AvKs844h8Sgunv2TY9W6N3y9tfbTiNsrz9n_P6jet1-q7B7t8r-cT/exec";
+
+        let prontuarios = [];
+        let prontuarioSelecionadoId = null;
+
+        function getDataAtualLocal() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function formatarDataBR(dataIso) {
+            if (!dataIso) return 'N/A';
+            const partes = dataIso.split('-');
+            if(partes.length !== 3) return dataIso;
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+
+        async function carregarDadosDoSheets() {
+            if (GOOGLE_SCRIPT_URL.includes("SUA_URL")) {
+                document.getElementById('status-sync').innerText = "⚠️ Cole a URL do Apps Script no código HTML!";
+                return;
+            }
+
+            try {
+                document.getElementById('status-sync').innerText = "Sincronizando com a nuvem...";
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                if (!response.ok) throw new Error("Erro HTTP");
+                prontuarios = await response.json();
+                
+                document.getElementById('status-sync').innerText = "✅ Sincronizado com o Google Sheets";
+                renderizarMesa();
+                atualizarContagemProducao();
+            } catch (error) {
+                console.error(error);
+                document.getElementById('status-sync').innerText = "❌ Erro ao conectar com o Sheets";
+            }
+        }
+
+        async function salvarEAtualizar() {
+            renderizarMesa();
+            atualizarContagemProducao();
+
+            if (GOOGLE_SCRIPT_URL.includes("SUA_URL")) return;
+
+            try {
+                document.getElementById('status-sync').innerText = "Salvando na nuvem...";
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: "salvarTudo", prontuarios: prontuarios })
+                });
+                document.getElementById('status-sync').innerText = "✅ Salvo no Google Sheets";
+            } catch (error) {
+                console.error(error);
+                document.getElementById('status-sync').innerText = "⚠️ Erro ao salvar na nuvem";
+            }
+        }
+
+        function toggleCondicao(tipo, mostrar) {
+            document.getElementById(`bloco_${tipo}`).style.display = mostrar ? 'block' : 'none';
+        }
+
+        function adicionarMesa(event) {
+            event.preventDefault();
+            
+            const novoProntuario = {
+                id: document.getElementById('prontuario').value,
+                alta: document.getElementById('alta').value,
+                entrada: document.getElementById('entrada').value,
+                emergencia: document.querySelector('input[name="emergencia"]:checked').value,
+                uib_data: document.getElementById('uib_data').value,
+                ambulatorio: document.querySelector('input[name="ambulatorio"]:checked').value,
+                amb_data: document.getElementById('amb_data').value,
+                desmame: document.querySelector('input[name="desmame"]:checked').value,
+                des_qtd: document.getElementById('des_qtd').value,
+                status: 'mesa',
+                dataMontagem: null,
+                pendenciaDescricao: ''
+            };
+
+            if(prontuarios.some(p => p.id === novoProntuario.id)) {
+                alert('Este prontuário já existe no sistema!');
+                return;
+            }
+
+            prontuarios.push(novoProntuario);
+            salvarEAtualizar();
+            document.getElementById('form-prontuario').reset();
+            toggleCondicao('uib', false);
+            toggleCondicao('amb', false);
+            toggleCondicao('des', false);
+        }
+
+        function renderizarMesa() {
+            const ulMesa = document.getElementById('lista-mesa');
+            ulMesa.innerHTML = '';
+            
+            const dados = prontuarios.filter(p => p.status === 'mesa');
+
+            if(dados.length === 0) {
+                ulMesa.innerHTML = '<p style="color: #a4b0be; font-size: 0.85rem;">Nenhum prontuário na mesa.</p>';
+                return;
+            }
+
+            dados.forEach(p => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="prontuario-card">
+                        <span>📁</span>
+                        <strong>${p.id}</strong>
+                        <div class="btn-pront">
+                            <input type="button" id="pronto" value="ok" onclick="mudarStatus('${p.id}', 'pronto')">
+                            <input type="button" value="..." onclick="toggleMenu('mesa-${p.id}')">
+                        </div>
+                        <div id="menu-mesa-${p.id}" class="menu-reticiencia">
+                            <button onclick="verInfo('${p.id}')">Info</button>
+                            <button onclick="abrirModalPendencia('${p.id}')">Pendência</button>
+                            <button onclick="excluirProntuario('${p.id}')" style="color:var(--danger);">Excluir</button>
+                        </div>
+                    </div>
+                `;
+                ulMesa.appendChild(li);
+            });
+        }
+
+        function mudarStatus(id, novoStatus) {
+            const p = prontuarios.find(item => item.id === id);
+            if (p) {
+                p.status = novoStatus;
+                if (novoStatus === 'pronto') {
+                    p.dataMontagem = getDataAtualLocal();
+                } else if (novoStatus === 'mesa') {
+                    p.dataMontagem = null;
+                }
+                salvarEAtualizar();
+                pesquisarProntuario();
+            }
+        }
+
+        function toggleMenu(menuId) {
+            const menu = document.getElementById(`menu-${menuId}`);
+            document.querySelectorAll('.menu-reticiencia').forEach(m => {
+                if(m !== menu) m.style.display = 'none';
+            });
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function excluirProntuario(id) {
+            if(confirm(`Excluir o prontuário ${id}?`)) {
+                prontuarios = prontuarios.filter(item => item.id !== id);
+                salvarEAtualizar();
+                pesquisarProntuario();
+            }
+        }
+
+        function verInfo(id) {
+            const p = prontuarios.find(item => item.id === id);
+            if(p) {
+                document.getElementById('conteudo-info').innerHTML = `
+                    <p><strong>Número:</strong> ${p.id}</p>
+                    <p><strong>Status atual:</strong> ${p.status.toUpperCase()}</p>
+                    <p><strong>Data da Alta:</strong> ${formatarDataBR(p.alta)}</p>
+                    <p><strong>Data de Internação:</strong> ${formatarDataBR(p.entrada)}</p>
+                    <p><strong>Emergência:</strong> ${p.emergencia} ${p.uib_data ? '('+formatarDataBR(p.uib_data)+')' : ''}</p>
+                    <p><strong>Ambulatório:</strong> ${p.ambulatorio} ${p.amb_data ? '('+formatarDataBR(p.amb_data)+')' : ''}</p>
+                    <p><strong>Desmame:</strong> ${p.desmame} ${p.des_qtd ? 'Qtd: '+p.des_qtd : ''}</p>
+                    ${p.dataMontagem ? `<p><strong>Data de Montagem:</strong> ${formatarDataBR(p.dataMontagem)}</p>` : ''}
+                    ${p.pendenciaDescricao ? `<p style="color:var(--danger)"><strong>Pendência:</strong> ${p.pendenciaDescricao}</p>` : ''}
+                `;
+                document.getElementById('modal-info').style.display = 'flex';
+            }
+        }
+
+        function abrirModalPendencia(id) {
+            prontuarioSelecionadoId = id;
+            document.getElementById('texto-pendencia').value = '';
+            document.getElementById('modal-pendencia').style.display = 'flex';
+        }
+
+        function salvarPendencia() {
+            const desc = document.getElementById('texto-pendencia').value;
+            if(!desc) { alert('Escreva a justificativa.'); return; }
+            const p = prontuarios.find(item => item.id === prontuarioSelecionadoId);
+            if(p) {
+                p.status = 'pendente';
+                p.pendenciaDescricao = desc;
+                salvarEAtualizar();
+                fecharModal('modal-pendencia');
+                pesquisarProntuario();
+            }
+        }
+
+        function pesquisarProntuario() {
+            const termo = document.getElementById('input-busca').value.trim();
+            const containerRes = document.getElementById('resultado-pesquisa');
+
+            if(!termo) {
+                containerRes.style.display = 'none';
+                containerRes.innerHTML = '';
+                return;
+            }
+
+            const filtrados = prontuarios.filter(p => p.id.includes(termo));
+            
+            if(filtrados.length === 0) {
+                containerRes.style.display = 'block';
+                containerRes.innerHTML = '<p style="font-size:0.85rem; color:#a4b0be; text-align:center; padding: 5px;">Nenhum prontuário encontrado.</p>';
+                return;
+            }
+
+            let html = '';
+            filtrados.forEach(p => {
+                let extraInfo = p.status === 'pronto' && p.dataMontagem ? `Montagem: ${formatarDataBR(p.dataMontagem)}` : `Status: ${p.status}`;
+                html += `
+                    <div class="resultado-pesquisa-item">
+                        <div>
+                            <strong>#${p.id}</strong> <span style="font-size:0.75rem; color:#57606f;">(${extraInfo})</span>
+                        </div>
+                        <button class="btn-acao" style="width: auto; padding: 3px 10px; font-size: 0.75rem;" onclick="verInfo('${p.id}')">Info</button>
+                    </div>
+                `;
+            });
+
+            containerRes.style.display = 'block';
+            containerRes.innerHTML = html;
+        }
+
+        function atualizarContagemProducao() {
+            const dataSelecionada = document.getElementById('data-prod').value;
+            let montados = prontuarios.filter(p => p.status === 'pronto');
+            if(dataSelecionada) {
+                montados = montados.filter(p => p.dataMontagem === dataSelecionada);
+            }
+            document.getElementById('texto-contador').innerText = `Prontuários montados: ${montados.length}`;
+        }
+
+        function abrirDetalhesProducao() {
+            const dataSelecionada = document.getElementById('data-prod').value;
+            let montados = prontuarios.filter(p => p.status === 'pronto');
+            if(dataSelecionada) {
+                montados = montados.filter(p => p.dataMontagem === dataSelecionada);
+            }
+
+            let html = montados.length === 0 ? '<p>Nenhum prontuário montado nesta data.</p>' : '<ul style="list-style:none;">';
+            montados.forEach(p => {
+                html += `<li style="padding: 5px 0; border-bottom: 1px solid #eee;"><strong>#${p.id}</strong> - Alta: ${formatarDataBR(p.alta)}</li>`;
+            });
+            html += '</ul>';
+
+            document.getElementById('conteudo-detalhes').innerHTML = html;
+            document.getElementById('modal-detalhes').style.display = 'flex';
+        }
+
+        function filtrarFluxo(tipo) {
+            const filtrados = prontuarios.filter(p => p.status === tipo);
+            const container = document.getElementById('lista-fluxo-view');
+            
+            if(filtrados.length === 0) {
+                container.innerHTML = `<p style="margin-top: 5px;">Nenhum prontuário ${tipo}.</p>`;
+                return;
+            }
+
+            let html = `<ul style="list-style:none; display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">`;
+            filtrados.forEach(p => {
+                if (tipo === 'pronto') {
+                    html += `
+                        <li class="prontuario-card">
+                            <span>📁</span>
+                            <strong>${p.id}</strong>
+                            <span class="info-texto">Montagem: ${formatarDataBR(p.dataMontagem)}</span>
+                            <span class="info-texto">Alta: ${formatarDataBR(p.alta)}</span>
+                            <div class="btn-pront">
+                                <input type="button" value="Excluir" onclick="excluirProntuario('${p.id}')" style="background:#ff7675; color:white; border:none;">
+                            </div>
+                        </li>
+                    `;
+                } else if (tipo === 'pendente') {
+                    html += `
+                        <li class="prontuario-card">
+                            <span>📁</span>
+                            <strong>${p.id}</strong>
+                            <span class="info-texto" style="color:var(--danger);">Pendente</span>
+                            <div class="btn-pront">
+                                <input type="button" id="pronto" value="ok" onclick="mudarStatus('${p.id}', 'pronto')" title="Resolver pendência">
+                                <input type="button" value="..." onclick="toggleMenu('pend-${p.id}')">
+                            </div>
+                            <div id="menu-pend-${p.id}" class="menu-reticiencia">
+                                <button onclick="verInfo('${p.id}')">Info</button>
+                                <button onclick="excluirProntuario('${p.id}')" style="color:var(--danger);">Excluir</button>
+                            </div>
+                        </li>
+                    `;
+                }
+            });
+            html += `</ul>`;
+            container.innerHTML = html;
+        }
+
+        function fecharModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        window.onload = () => {
+            document.getElementById('data-prod').value = getDataAtualLocal();
+            carregarDadosDoSheets();
+        };
+    </script>
+</body>
+</html>
