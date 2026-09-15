@@ -471,11 +471,25 @@
         }
 
         function formatarDataBR(dataIso) {
-            if (!dataIso) return 'N/A';
-            const partes = dataIso.split('-');
-            if(partes.length !== 3) return dataIso;
-            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    if (!dataIso) return 'N/A';
+    
+    // Se o Google Sheets mandou o texto longo com "Sat Sep 12...", extraímos apenas a parte da data
+    let strData = String(dataIso);
+    if (strData.includes("GMT")) {
+        // Tenta converter o texto de data do JS para um objeto Date real e formatar para AAAA-MM-DD
+        const d = new Date(strData);
+        if (!isNaN(d.getTime())) {
+            const ano = d.getFullYear();
+            const mes = String(d.getMonth() + 1).padStart(2, '0');
+            const dia = String(d.getDate()).padStart(2, '0');
+            strData = `${ano}-${mes}-${dia}`;
         }
+    }
+
+    const partes = strData.split('T')[0].split('-');
+    if (partes.length !== 3) return dataIso;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
 
         async function carregarDadosDoSheets() {
             if (GOOGLE_SCRIPT_URL.includes("SUA_URL")) {
