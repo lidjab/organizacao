@@ -238,7 +238,7 @@
             border-radius: 6px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             z-index: 10;
-            width: 85px;
+            width: 95px;
             padding: 4px;
         }
 
@@ -357,43 +357,43 @@
                 <ul class="cadastro_prontuario">
                     <li>
                         <label for="prontuario">Número de prontuário</label>
-                        <input type="number" id="prontuario" required>
+                        <input type="number" id="prontuario" required placeholder="Digite apenas o número">
                     </li>
-                    <li>
-                        <label for="alta">Data de alta</label>
-                        <input type="date" id="alta">
-                    </li>
-                    <li>
-                        <label for="entrada">Data de internação</label>
-                        <input type="date" id="entrada">
-                    </li>
-                    <li>
-                        <p>Emergência</p>
-                        <label><input type="radio" name="emergencia" value="sim" onclick="toggleCondicao('uib', true)"> Sim</label>
-                        <label><input type="radio" name="emergencia" value="nao" onclick="toggleCondicao('uib', false)" checked> Não</label>
-                        <div class="condicao_uib" id="bloco_uib">
-                            <label>Data</label>
-                            <input type="date" id="uib_data">
+                    <!-- Campos opcionais no cadastro rápido (podem ser preenchidos depois na edição) -->
+                    <details style="margin-top: 8px; font-size: 0.85rem; cursor: pointer;">
+                        <summary style="color: var(--primary); font-weight: 600;">Deseja preencher detalhes agora?</summary>
+                        <div style="margin-top: 10px;">
+                            <label for="alta">Data de alta</label>
+                            <input type="date" id="alta" style="margin-bottom: 10px;">
+                            
+                            <label for="entrada">Data de internação</label>
+                            <input type="date" id="entrada" style="margin-bottom: 10px;">
+                            
+                            <p style="margin-top: 5px;">Emergência</p>
+                            <label><input type="radio" name="emergencia" value="sim" onclick="toggleCondicao('uib', true)"> Sim</label>
+                            <label><input type="radio" name="emergencia" value="nao" onclick="toggleCondicao('uib', false)" checked> Não</label>
+                            <div class="condicao_uib" id="bloco_uib" style="margin-bottom: 10px;">
+                                <label>Data</label>
+                                <input type="date" id="uib_data">
+                            </div>
+
+                            <p style="margin-top: 5px;">Ambulatório</p>
+                            <label><input type="radio" name="ambulatorio" value="sim" onclick="toggleCondicao('amb', true)"> Sim</label>
+                            <label><input type="radio" name="ambulatorio" value="nao" onclick="toggleCondicao('amb', false)" checked> Não</label>
+                            <div class="condicao_amb" id="bloco_amb" style="margin-bottom: 10px;">
+                                <label>Data</label>
+                                <input type="date" id="amb_data">
+                            </div>
+
+                            <p style="margin-top: 5px;">Desmame</p>
+                            <label><input type="radio" name="desmame" value="sim" onclick="toggleCondicao('des', true)"> Sim</label>
+                            <label><input type="radio" name="desmame" value="nao" onclick="toggleCondicao('des', false)" checked> Não</label>
+                            <div class="condicao_des" id="bloco_des">
+                                <label>Informe quantidade</label>
+                                <input type="number" id="des_qtd">
+                            </div>
                         </div>
-                    </li>
-                    <li>
-                        <p>Ambulatório</p>
-                        <label><input type="radio" name="ambulatorio" value="sim" onclick="toggleCondicao('amb', true)"> Sim</label>
-                        <label><input type="radio" name="ambulatorio" value="nao" onclick="toggleCondicao('amb', false)" checked> Não</label>
-                        <div class="condicao_amb" id="bloco_amb">
-                            <label>Data</label>
-                            <input type="date" id="amb_data">
-                        </div>
-                    </li>
-                    <li>
-                        <p>Desmame</p>
-                        <label><input type="radio" name="desmame" value="sim" onclick="toggleCondicao('des', true)"> Sim</label>
-                        <label><input type="radio" name="desmame" value="nao" onclick="toggleCondicao('des', false)" checked> Não</label>
-                        <div class="condicao_des" id="bloco_des">
-                            <label>Informe quantidade</label>
-                            <input type="number" id="des_qtd">
-                        </div>
-                    </li>
+                    </details>
                 </ul>
                 <br>
                 <button type="submit">Adicionar para montagem</button>
@@ -432,11 +432,66 @@
         </div>
     </div>
 
+    <!-- Modal de Informações com Botão de Editar -->
     <div id="modal-info" class="modal">
         <div class="modal-content">
             <h3>Informações do Prontuário</h3>
             <div id="conteudo-info" style="font-size:0.9rem; margin-bottom: 10px;"></div>
-            <button class="btn-acao" onclick="fecharModal('modal-info')">Fechar</button>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-acao" id="btn-abrir-edicao" onclick="abrirEdicaoDoModal()" style="background-color: var(--primary);">Editar</button>
+                <button class="btn-acao" onclick="fecharModal('modal-info')" style="background: #a4b0be;">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edição Completa -->
+    <div id="modal-editar" class="modal">
+        <div class="modal-content">
+            <h3>Editar Prontuário <span id="edit-titulo-id"></span></h3>
+            <form id="form-edicao" onsubmit="salvarEdicao(event)" style="margin-top: 10px;">
+                <ul class="cadastro_prontuario" style="list-style: none;">
+                    <li>
+                        <label>Data de alta</label>
+                        <input type="date" id="edit-alta">
+                    </li>
+                    <li>
+                        <label>Data de internação</label>
+                        <input type="date" id="edit-entrada">
+                    </li>
+                    <li>
+                        <p>Emergência</p>
+                        <label><input type="radio" name="edit-emergencia" value="sim" onclick="toggleEditCondicao('uib', true)"> Sim</label>
+                        <label><input type="radio" name="edit-emergencia" value="nao" onclick="toggleEditCondicao('uib', false)"> Não</label>
+                        <div class="condicao_uib" id="edit-bloco_uib">
+                            <label>Data</label>
+                            <input type="date" id="edit-uib_data">
+                        </div>
+                    </li>
+                    <li>
+                        <p>Ambulatório</p>
+                        <label><input type="radio" name="edit-ambulatorio" value="sim" onclick="toggleEditCondicao('amb', true)"> Sim</label>
+                        <label><input type="radio" name="edit-ambulatorio" value="nao" onclick="toggleEditCondicao('amb', false)"> Não</label>
+                        <div class="condicao_amb" id="edit-bloco_amb">
+                            <label>Data</label>
+                            <input type="date" id="edit-amb_data">
+                        </div>
+                    </li>
+                    <li>
+                        <p>Desmame</p>
+                        <label><input type="radio" name="edit-desmame" value="sim" onclick="toggleEditCondicao('des', true)"> Sim</label>
+                        <label><input type="radio" name="edit-desmame" value="nao" onclick="toggleEditCondicao('des', false)"> Não</label>
+                        <div class="condicao_des" id="edit-bloco_des">
+                            <label>Informe quantidade</label>
+                            <input type="number" id="edit-des_qtd">
+                        </div>
+                    </li>
+                </ul>
+                <br>
+                <div style="display: flex; gap: 8px;">
+                    <button type="submit" class="btn-acao">Salvar Alterações</button>
+                    <button type="button" class="btn-acao" onclick="fecharModal('modal-editar')" style="background: #a4b0be;">Cancelar</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -460,7 +515,7 @@
 
     <script>
         // COLE SUA URL DO APPS SCRIPT ABAIXO:
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzh9COnqoRwD58AvKs844h8Sgunv2TY9W6N3y9tfbTiNsrz9n_P6jet1-q7B7t8r-cT/exec";
+        const GOOGLE_SCRIPT_URL = "SUA_URL_DO_GOOGLE_APPS_SCRIPT_AQUI";
 
         let prontuarios = [];
         let prontuarioSelecionadoId = null;
@@ -470,26 +525,38 @@
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
-        function formatarDataBR(dataIso) {
-    if (!dataIso) return 'N/A';
-    
-    // Se o Google Sheets mandou o texto longo com "Sat Sep 12...", extraímos apenas a parte da data
-    let strData = String(dataIso);
-    if (strData.includes("GMT")) {
-        // Tenta converter o texto de data do JS para um objeto Date real e formatar para AAAA-MM-DD
-        const d = new Date(strData);
-        if (!isNaN(d.getTime())) {
-            const ano = d.getFullYear();
-            const mes = String(d.getMonth() + 1).padStart(2, '0');
-            const dia = String(d.getDate()).padStart(2, '0');
-            strData = `${ano}-${mes}-${dia}`;
+        function formatarParaInputDate(dataIso) {
+            if (!dataIso) return '';
+            let strData = String(dataIso);
+            if (strData.includes("GMT")) {
+                const d = new Date(strData);
+                if (!isNaN(d.getTime())) {
+                    const ano = d.getFullYear();
+                    const mes = String(d.getMonth() + 1).padStart(2, '0');
+                    const dia = String(d.getDate()).padStart(2, '0');
+                    return `${ano}-${mes}-${dia}`;
+                }
+            }
+            return strData.split('T')[0];
         }
-    }
 
-    const partes = strData.split('T')[0].split('-');
-    if (partes.length !== 3) return dataIso;
-    return `${partes[2]}/${partes[1]}/${partes[0]}`;
-}
+        function formatarDataBR(dataIso) {
+            if (!dataIso) return 'N/A';
+            let strData = String(dataIso);
+            if (strData.includes("GMT")) {
+                const d = new Date(strData);
+                if (!isNaN(d.getTime())) {
+                    const ano = d.getFullYear();
+                    const mes = String(d.getMonth() + 1).padStart(2, '0');
+                    const dia = String(d.getDate()).padStart(2, '0');
+                    strData = `${ano}-${mes}-${dia}`;
+                }
+            }
+
+            const partes = strData.split('T')[0].split('-');
+            if (partes.length !== 3) return dataIso;
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
 
         async function carregarDadosDoSheets() {
             if (GOOGLE_SCRIPT_URL.includes("SUA_URL")) {
@@ -537,19 +604,23 @@
             document.getElementById(`bloco_${tipo}`).style.display = mostrar ? 'block' : 'none';
         }
 
+        function toggleEditCondicao(tipo, mostrar) {
+            document.getElementById(`edit-bloco_${tipo}`).style.display = mostrar ? 'block' : 'none';
+        }
+
         function adicionarMesa(event) {
             event.preventDefault();
             
             const novoProntuario = {
                 id: document.getElementById('prontuario').value,
-                alta: document.getElementById('alta').value,
-                entrada: document.getElementById('entrada').value,
-                emergencia: document.querySelector('input[name="emergencia"]:checked').value,
-                uib_data: document.getElementById('uib_data').value,
-                ambulatorio: document.querySelector('input[name="ambulatorio"]:checked').value,
-                amb_data: document.getElementById('amb_data').value,
-                desmame: document.querySelector('input[name="desmame"]:checked').value,
-                des_qtd: document.getElementById('des_qtd').value,
+                alta: document.getElementById('alta').value || '',
+                entrada: document.getElementById('entrada').value || '',
+                emergencia: document.querySelector('input[name="emergencia"]:checked')?.value || 'nao',
+                uib_data: document.getElementById('uib_data').value || '',
+                ambulatorio: document.querySelector('input[name="ambulatorio"]:checked')?.value || 'nao',
+                amb_data: document.getElementById('amb_data').value || '',
+                desmame: document.querySelector('input[name="desmame"]:checked')?.value || 'nao',
+                des_qtd: document.getElementById('des_qtd').value || '',
                 status: 'mesa',
                 dataMontagem: null,
                 pendenciaDescricao: ''
@@ -590,7 +661,7 @@
                             <input type="button" value="..." onclick="toggleMenu('mesa-${p.id}')">
                         </div>
                         <div id="menu-mesa-${p.id}" class="menu-reticiencia">
-                            <button onclick="verInfo('${p.id}')">Info</button>
+                            <button onclick="verInfo('${p.id}')">Info / Editar</button>
                             <button onclick="abrirModalPendencia('${p.id}')">Pendência</button>
                             <button onclick="excluirProntuario('${p.id}')" style="color:var(--danger);">Excluir</button>
                         </div>
@@ -631,6 +702,7 @@
         }
 
         function verInfo(id) {
+            prontuarioSelecionadoId = id;
             const p = prontuarios.find(item => item.id === id);
             if(p) {
                 document.getElementById('conteudo-info').innerHTML = `
@@ -646,6 +718,70 @@
                 `;
                 document.getElementById('modal-info').style.display = 'flex';
             }
+        }
+
+        function abrirEdicaoDoModal() {
+            fecharModal('modal-info');
+            const p = prontuarios.find(item => item.id === prontuarioSelecionadoId);
+            if (!p) return;
+
+            document.getElementById('edit-titulo-id').innerText = `#${p.id}`;
+            document.getElementById('edit-alta').value = formatarParaInputDate(p.alta);
+            document.getElementById('edit-entrada').value = formatarParaInputDate(p.entrada);
+
+            // Emergência
+            if (p.emergencia === 'sim') {
+                document.querySelector('input[name="edit-emergencia"][value="sim"]').checked = true;
+                toggleEditCondicao('uib', true);
+                document.getElementById('edit-uib_data').value = formatarParaInputDate(p.uib_data);
+            } else {
+                document.querySelector('input[name="edit-emergencia"][value="nao"]').checked = true;
+                toggleEditCondicao('uib', false);
+                document.getElementById('edit-uib_data').value = '';
+            }
+
+            // Ambulatório
+            if (p.ambulatorio === 'sim') {
+                document.querySelector('input[name="edit-ambulatorio"][value="sim"]').checked = true;
+                toggleEditCondicao('amb', true);
+                document.getElementById('edit-amb_data').value = formatarParaInputDate(p.amb_data);
+            } else {
+                document.querySelector('input[name="edit-ambulatorio"][value="nao"]').checked = true;
+                toggleEditCondicao('amb', false);
+                document.getElementById('edit-amb_data').value = '';
+            }
+
+            // Desmame
+            if (p.desmame === 'sim') {
+                document.querySelector('input[name="edit-desmame"][value="sim"]').checked = true;
+                toggleEditCondicao('des', true);
+                document.getElementById('edit-des_qtd').value = p.des_qtd || '';
+            } else {
+                document.querySelector('input[name="edit-desmame"][value="nao"]').checked = true;
+                toggleEditCondicao('des', false);
+                document.getElementById('edit-des_qtd').value = '';
+            }
+
+            document.getElementById('modal-editar').style.display = 'flex';
+        }
+
+        function salvarEdicao(event) {
+            event.preventDefault();
+            const p = prontuarios.find(item => item.id === prontuarioSelecionadoId);
+            if (!p) return;
+
+            p.alta = document.getElementById('edit-alta').value || '';
+            p.entrada = document.getElementById('edit-entrada').value || '';
+            p.emergencia = document.querySelector('input[name="edit-emergencia"]:checked')?.value || 'nao';
+            p.uib_data = document.getElementById('edit-uib_data').value || '';
+            p.ambulatorio = document.querySelector('input[name="edit-ambulatorio"]:checked')?.value || 'nao';
+            p.amb_data = document.getElementById('edit-amb_data').value || '';
+            p.desmame = document.querySelector('input[name="edit-desmame"]:checked')?.value || 'nao';
+            p.des_qtd = document.getElementById('edit-des_qtd').value || '';
+
+            salvarEAtualizar();
+            fecharModal('modal-editar');
+            verInfo(p.id); // reabre o modal de info atualizado
         }
 
         function abrirModalPendencia(id) {
@@ -693,7 +829,7 @@
                         <div>
                             <strong>#${p.id}</strong> <span style="font-size:0.75rem; color:#57606f;">(${extraInfo})</span>
                         </div>
-                        <button class="btn-acao" style="width: auto; padding: 3px 10px; font-size: 0.75rem;" onclick="verInfo('${p.id}')">Info</button>
+                        <button class="btn-acao" style="width: auto; padding: 3px 10px; font-size: 0.75rem;" onclick="verInfo('${p.id}')">Info / Editar</button>
                     </div>
                 `;
             });
@@ -702,31 +838,79 @@
             containerRes.innerHTML = html;
         }
 
-        function atualizarContagemProducao() {
-            const dataSelecionada = document.getElementById('data-prod').value;
-            let montados = prontuarios.filter(p => p.status === 'pronto');
-            if(dataSelecionada) {
-                montados = montados.filter(p => p.dataMontagem === dataSelecionada);
+        // Função auxiliar para calcular o peso/pontuação do prontuário com base nas suas regras
+function calcularPesoProntuario(p) {
+    if (p.status !== 'pronto') return 0;
+    
+    let peso = 1; // Base: 1 unidade por prontuário
+
+    // 1. Acréscimo por Desmame
+    if (p.desmame === 'sim') {
+        // Se houver quantidade informada usa ela, senão soma +1 por ter desmame
+        let qtdDesmame = parseInt(p.des_qtd) || 1;
+        peso += qtdDesmame;
+    }
+
+    // 2. Acréscimo por tempo (Meses entre entrada e alta)
+    if (p.entrada && p.alta) {
+        const dEntrada = new Date(p.entrada);
+        const dAlta = new Date(p.alta);
+        
+        if (!isNaN(dEntrada.getTime()) && !isNaN(dAlta.getTime()) && dAlta >= dEntrada) {
+            // Calcula a diferença em meses
+            let anos = dAlta.getFullYear() - dEntrada.getFullYear();
+            let meses = dAlta.getMonth() - dEntrada.getMonth();
+            let totalMeses = (anos * 12) + meses;
+            
+            // Se passar de 1 mês ou mais, cada mês conta como 2 (multiplica o total de meses por 2)
+            if (totalMeses >= 1) {
+                peso += (totalMeses * 2);
             }
-            document.getElementById('texto-contador').innerText = `Prontuários montados: ${montados.length}`;
         }
+    }
 
-        function abrirDetalhesProducao() {
-            const dataSelecionada = document.getElementById('data-prod').value;
-            let montados = prontuarios.filter(p => p.status === 'pronto');
-            if(dataSelecionada) {
-                montados = montados.filter(p => p.dataMontagem === dataSelecionada);
-            }
+    return peso;
+}
 
-            let html = montados.length === 0 ? '<p>Nenhum prontuário montado nesta data.</p>' : '<ul style="list-style:none;">';
-            montados.forEach(p => {
-                html += `<li style="padding: 5px 0; border-bottom: 1px solid #eee;"><strong>#${p.id}</strong> - Alta: ${formatarDataBR(p.alta)}</li>`;
-            });
-            html += '</ul>';
+function atualizarContagemProducao() {
+    const dataSelecionada = document.getElementById('data-prod').value;
+    let montados = prontuarios.filter(p => p.status === 'pronto');
+    
+    if(dataSelecionada) {
+        montados = montados.filter(p => p.dataMontagem === dataSelecionada);
+    }
 
-            document.getElementById('conteudo-detalhes').innerHTML = html;
-            document.getElementById('modal-detalhes').style.display = 'flex';
-        }
+    // Soma o peso total de todos os prontuários filtrados
+    let totalPontos = 0;
+    montados.forEach(p => {
+        totalPontos += calcularPesoProntuario(p);
+    });
+
+    document.getElementById('texto-contador').innerText = `Prontuários montados: ${totalPontos}`;
+}
+
+function abrirDetalhesProducao() {
+    const dataSelecionada = document.getElementById('data-prod').value;
+    let montados = prontuarios.filter(p => p.status === 'pronto');
+    
+    if(dataSelecionada) {
+        montados = montados.filter(p => p.dataMontagem === dataSelecionada);
+    }
+
+    let html = montados.length === 0 ? '<p>Nenhum prontuário montado nesta data.</p>' : '<ul style="list-style:none; max-height: 250px; overflow-y: auto;">';
+    
+    montados.forEach(p => {
+        let pesoItem = calcularPesoProntuario(p);
+        html += `<li style="padding: 6px 0; border-bottom: 1px solid #eee; font-size: 0.85rem;">
+                    <strong>#${p.id}</strong> — Peso/Pontuação: <strong>${pesoItem}</strong><br>
+                    <span style="color:#57606f; font-size:0.75rem;">Alta: ${formatarDataBR(p.alta)} ${p.desmame === 'sim' ? '| Desmame: Sim' : ''}</span>
+                 </li>`;
+    });
+    html += '</ul>';
+
+    document.getElementById('conteudo-detalhes').innerHTML = html;
+    document.getElementById('modal-detalhes').style.display = 'flex';
+}
 
         function filtrarFluxo(tipo) {
             const filtrados = prontuarios.filter(p => p.status === tipo);
@@ -762,7 +946,7 @@
                                 <input type="button" value="..." onclick="toggleMenu('pend-${p.id}')">
                             </div>
                             <div id="menu-pend-${p.id}" class="menu-reticiencia">
-                                <button onclick="verInfo('${p.id}')">Info</button>
+                                <button onclick="verInfo('${p.id}')">Info / Editar</button>
                                 <button onclick="excluirProntuario('${p.id}')" style="color:var(--danger);">Excluir</button>
                             </div>
                         </li>
