@@ -841,39 +841,20 @@
             containerRes.innerHTML = html;
         }
 
-        // Função de cálculo rigorosa e blindada contra resets
-        function calcularPesoProntuario(p) {
-            if (p.status !== 'pronto') return 0;
-            
-            let peso = 1; // Base: 1 unidade por prontuário
+// Função de cálculo simplificada: Apenas Prontuário + Desmames
+function calcularPesoProntuario(p) {
+    if (p.status !== 'pronto') return 0;
+    
+    let peso = 1; // Base: 1 unidade por prontuário
 
-            // 1. Acréscimo por Desmame
-            if (p.desmame === 'sim') {
-                let qtdDesmame = parseInt(p.des_qtd) || 1;
-                peso += qtdDesmame;
-            }
+    // Acréscimo apenas por Desmame
+    if (p.desmame === 'sim') {
+        let qtdDesmame = parseInt(p.des_qtd) || 1;
+        peso += qtdDesmame;
+    }
 
-            // 2. Acréscimo por tempo (Meses entre entrada e alta)
-            if (p.entrada && p.alta) {
-                let sEntrada = formatarParaInputDate(p.entrada);
-                let sAlta = formatarParaInputDate(p.alta);
-
-                const dEntrada = new Date(sEntrada + 'T00:00:00');
-                const dAlta = new Date(sAlta + 'T00:00:00');
-                
-                if (!isNaN(dEntrada.getTime()) && !isNaN(dAlta.getTime()) && dAlta >= dEntrada) {
-                    let anos = dAlta.getFullYear() - dEntrada.getFullYear();
-                    let meses = dAlta.getMonth() - dEntrada.getMonth();
-                    let totalMeses = (anos * 12) + meses;
-                    
-                    if (totalMeses >= 1) {
-                        peso += (totalMeses * 2);
-                    }
-                }
-            }
-
-            return peso;
-        }
+    return peso;
+}
 
         function atualizarContagemProducao() {
             const dataSelecionada = document.getElementById('data-prod').value;
