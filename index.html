@@ -359,7 +359,6 @@
                         <label for="prontuario">Número de prontuário</label>
                         <input type="number" id="prontuario" required placeholder="Digite apenas o número">
                     </li>
-                    <!-- Campos opcionais no cadastro rápido (podem ser preenchidos depois na edição) -->
                     <details style="margin-top: 8px; font-size: 0.85rem; cursor: pointer;">
                         <summary style="color: var(--primary); font-weight: 600;">Deseja preencher detalhes agora?</summary>
                         <div style="margin-top: 10px;">
@@ -425,7 +424,7 @@
             <h3>Produção</h3>
             <div class="card-prod">
                 <p>Quem fez, fez!</p>
-                <input type="date" name="data-prod" id="data-prod" onchange="atualizarContagemProducao()">
+                <input type="date" name="data-prod" id="data-prod" onchange="aoMudarDataProducao()">
                 <p id="texto-contador">Prontuários montados: 0</p>
                 <input type="button" class="btn-acao" value="Detalhes" onclick="abrirDetalhesProducao()">
             </div>
@@ -519,6 +518,7 @@
 
         let prontuarios = [];
         let prontuarioSelecionadoId = null;
+        let ultimoFiltroFluxoAtivo = null; // Guarda qual aba do fluxo está aberta
 
         function getDataAtualLocal() {
             const d = new Date();
@@ -528,7 +528,7 @@
         function formatarParaInputDate(dataIso) {
             if (!dataIso) return '';
             let strData = String(dataIso);
-            if (strData.includes("GMT")) {
+            if (strData.includes("GMT") || strData.includes("UTC") || strData.length > 10) {
                 const d = new Date(strData);
                 if (!isNaN(d.getTime())) {
                     const ano = d.getFullYear();
@@ -543,7 +543,7 @@
         function formatarDataBR(dataIso) {
             if (!dataIso) return 'N/A';
             let strData = String(dataIso);
-            if (strData.includes("GMT")) {
+            if (strData.includes("GMT") || strData.includes("UTC") || strData.length > 10) {
                 const d = new Date(strData);
                 if (!isNaN(d.getTime())) {
                     const ano = d.getFullYear();
@@ -582,6 +582,9 @@
         async function salvarEAtualizar() {
             renderizarMesa();
             atualizarContagemProducao();
+            if (ultimoFiltroFluxoAtivo) {
+                filtrarFluxo(ultimoFiltroFluxoAtivo);
+            }
 
             if (GOOGLE_SCRIPT_URL.includes("SUA_URL")) return;
 
@@ -640,6 +643,7 @@
         }
 
         function renderizarMesa() {
+            ultimoFiltroFluxoAtivo = null;
             const ulMesa = document.getElementById('lista-mesa');
             ulMesa.innerHTML = '';
             
@@ -676,7 +680,9 @@
             if (p) {
                 p.status = novoStatus;
                 if (novoStatus === 'pronto') {
-                    p.dataMontagem = getDataAtualLocal();
+                    // Define a data de montagem com base na data selecionada atualmente no campo de produção
+                    p.dataMontagem = document.getElementById('data-prod').value || getDataAtualLocal();
+                    p.pendenciaDescricao = ''; // Limpa pendência ao concluir
                 } else if (novoStatus === 'mesa') {
                     p.dataMontagem = null;
                 }
@@ -729,7 +735,6 @@
             document.getElementById('edit-alta').value = formatarParaInputDate(p.alta);
             document.getElementById('edit-entrada').value = formatarParaInputDate(p.entrada);
 
-            // Emergência
             if (p.emergencia === 'sim') {
                 document.querySelector('input[name="edit-emergencia"][value="sim"]').checked = true;
                 toggleEditCondicao('uib', true);
@@ -740,7 +745,6 @@
                 document.getElementById('edit-uib_data').value = '';
             }
 
-            // Ambulatório
             if (p.ambulatorio === 'sim') {
                 document.querySelector('input[name="edit-ambulatorio"][value="sim"]').checked = true;
                 toggleEditCondicao('amb', true);
@@ -751,7 +755,6 @@
                 document.getElementById('edit-amb_data').value = '';
             }
 
-            // Desmame
             if (p.desmame === 'sim') {
                 document.querySelector('input[name="edit-desmame"][value="sim"]').checked = true;
                 toggleEditCondicao('des', true);
@@ -781,7 +784,7 @@
 
             salvarEAtualizar();
             fecharModal('modal-editar');
-            verInfo(p.id); // reabre o modal de info atualizado
+            verInfo(p.id);
         }
 
         function abrirModalPendencia(id) {
@@ -838,86 +841,102 @@
             containerRes.innerHTML = html;
         }
 
-        // Função auxiliar para calcular o peso/pontuação do prontuário com base nas suas regras
-function calcularPesoProntuario(p) {
-    if (p.status !== 'pronto') return 0;
-    
-    let peso = 1; // Base: 1 unidade por prontuário
-
-    // 1. Acréscimo por Desmame
-    if (p.desmame === 'sim') {
-        // Se houver quantidade informada usa ela, senão soma +1 por ter desmame
-        let qtdDesmame = parseInt(p.des_qtd) || 1;
-        peso += qtdDesmame;
-    }
-
-    // 2. Acréscimo por tempo (Meses entre entrada e alta)
-    if (p.entrada && p.alta) {
-        const dEntrada = new Date(p.entrada);
-        const dAlta = new Date(p.alta);
-        
-        if (!isNaN(dEntrada.getTime()) && !isNaN(dAlta.getTime()) && dAlta >= dEntrada) {
-            // Calcula a diferença em meses
-            let anos = dAlta.getFullYear() - dEntrada.getFullYear();
-            let meses = dAlta.getMonth() - dEntrada.getMonth();
-            let totalMeses = (anos * 12) + meses;
+        // Função de cálculo rigorosa e blindada contra resets
+        function calcularPesoProntuario(p) {
+            if (p.status !== 'pronto') return 0;
             
-            // Se passar de 1 mês ou mais, cada mês conta como 2 (multiplica o total de meses por 2)
-            if (totalMeses >= 1) {
-                peso += (totalMeses * 2);
+            let peso = 1; // Base: 1 unidade por prontuário
+
+            // 1. Acréscimo por Desmame
+            if (p.desmame === 'sim') {
+                let qtdDesmame = parseInt(p.des_qtd) || 1;
+                peso += qtdDesmame;
+            }
+
+            // 2. Acréscimo por tempo (Meses entre entrada e alta)
+            if (p.entrada && p.alta) {
+                let sEntrada = formatarParaInputDate(p.entrada);
+                let sAlta = formatarParaInputDate(p.alta);
+
+                const dEntrada = new Date(sEntrada + 'T00:00:00');
+                const dAlta = new Date(sAlta + 'T00:00:00');
+                
+                if (!isNaN(dEntrada.getTime()) && !isNaN(dAlta.getTime()) && dAlta >= dEntrada) {
+                    let anos = dAlta.getFullYear() - dEntrada.getFullYear();
+                    let meses = dAlta.getMonth() - dEntrada.getMonth();
+                    let totalMeses = (anos * 12) + meses;
+                    
+                    if (totalMeses >= 1) {
+                        peso += (totalMeses * 2);
+                    }
+                }
+            }
+
+            return peso;
+        }
+
+        function atualizarContagemProducao() {
+            const dataSelecionada = document.getElementById('data-prod').value;
+            let montados = prontuarios.filter(p => p.status === 'pronto');
+            
+            if(dataSelecionada) {
+                montados = montados.filter(p => formatarParaInputDate(p.dataMontagem) === dataSelecionada);
+            }
+
+            let totalPontos = 0;
+            montados.forEach(p => {
+                totalPontos += calcularPesoProntuario(p);
+            });
+
+            document.getElementById('texto-contador').innerText = `Prontuários montados: ${totalPontos}`;
+        }
+
+        function aoMudarDataProducao() {
+            atualizarContagemProducao();
+            if (ultimoFiltroFluxoAtivo === 'pronto') {
+                filtrarFluxo('pronto');
             }
         }
-    }
 
-    return peso;
-}
+        function abrirDetalhesProducao() {
+            const dataSelecionada = document.getElementById('data-prod').value;
+            let montados = prontuarios.filter(p => p.status === 'pronto');
+            
+            if(dataSelecionada) {
+                montados = montados.filter(p => formatarParaInputDate(p.dataMontagem) === dataSelecionada);
+            }
 
-function atualizarContagemProducao() {
-    const dataSelecionada = document.getElementById('data-prod').value;
-    let montados = prontuarios.filter(p => p.status === 'pronto');
-    
-    if(dataSelecionada) {
-        montados = montados.filter(p => p.dataMontagem === dataSelecionada);
-    }
+            let html = montados.length === 0 ? '<p>Nenhum prontuário montado nesta data.</p>' : '<ul style="list-style:none; max-height: 250px; overflow-y: auto;">';
+            
+            montados.forEach(p => {
+                let pesoItem = calcularPesoProntuario(p);
+                html += `<li style="padding: 6px 0; border-bottom: 1px solid #eee; font-size: 0.85rem;">
+                            <strong>#${p.id}</strong> — Peso/Pontuação: <strong>${pesoItem}</strong><br>
+                            <span style="color:#57606f; font-size:0.75rem;">Alta: ${formatarDataBR(p.alta)} ${p.desmame === 'sim' ? '| Desmame: Sim' : ''}</span>
+                         </li>`;
+            });
+            html += '</ul>';
 
-    // Soma o peso total de todos os prontuários filtrados
-    let totalPontos = 0;
-    montados.forEach(p => {
-        totalPontos += calcularPesoProntuario(p);
-    });
-
-    document.getElementById('texto-contador').innerText = `Prontuários montados: ${totalPontos}`;
-}
-
-function abrirDetalhesProducao() {
-    const dataSelecionada = document.getElementById('data-prod').value;
-    let montados = prontuarios.filter(p => p.status === 'pronto');
-    
-    if(dataSelecionada) {
-        montados = montados.filter(p => p.dataMontagem === dataSelecionada);
-    }
-
-    let html = montados.length === 0 ? '<p>Nenhum prontuário montado nesta data.</p>' : '<ul style="list-style:none; max-height: 250px; overflow-y: auto;">';
-    
-    montados.forEach(p => {
-        let pesoItem = calcularPesoProntuario(p);
-        html += `<li style="padding: 6px 0; border-bottom: 1px solid #eee; font-size: 0.85rem;">
-                    <strong>#${p.id}</strong> — Peso/Pontuação: <strong>${pesoItem}</strong><br>
-                    <span style="color:#57606f; font-size:0.75rem;">Alta: ${formatarDataBR(p.alta)} ${p.desmame === 'sim' ? '| Desmame: Sim' : ''}</span>
-                 </li>`;
-    });
-    html += '</ul>';
-
-    document.getElementById('conteudo-detalhes').innerHTML = html;
-    document.getElementById('modal-detalhes').style.display = 'flex';
-}
+            document.getElementById('conteudo-detalhes').innerHTML = html;
+            document.getElementById('modal-detalhes').style.display = 'flex';
+        }
 
         function filtrarFluxo(tipo) {
-            const filtrados = prontuarios.filter(p => p.status === tipo);
+            ultimoFiltroFluxoAtivo = tipo;
+            let filtrados = prontuarios.filter(p => p.status === tipo);
+
+            // Se for "pronto", mostra apenas os do dia selecionado no painel de Produção para não acumular
+            if (tipo === 'pronto') {
+                const dataSelecionada = document.getElementById('data-prod').value;
+                if (dataSelecionada) {
+                    filtrados = filtrados.filter(p => formatarParaInputDate(p.dataMontagem) === dataSelecionada);
+                }
+            }
+
             const container = document.getElementById('lista-fluxo-view');
             
             if(filtrados.length === 0) {
-                container.innerHTML = `<p style="margin-top: 5px;">Nenhum prontuário ${tipo}.</p>`;
+                container.innerHTML = `<p style="margin-top: 5px;">Nenhum prontuário ${tipo} para a data selecionada.</p>`;
                 return;
             }
 
